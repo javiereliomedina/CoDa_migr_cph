@@ -1,0 +1,871 @@
+---
+title: "Migration studies with a Compositional Data approach: a case study of population structure in the Capital Region of Denmark"
+output: html_document
+fontsize: 12pt
+urlcolor: blue
+---
+
+```{r setup, include = FALSE}
+
+# Chunk options
+knitr::opts_chunk$set(include = TRUE,
+                      echo = TRUE,
+                      fig.pos = "H",
+                      fig.align = "center",
+                      warning = FALSE,
+                      message = FALSE)
+options(knitr.kable.NA = "-")
+
+set.seed(42)
+
+```
+
+**Authors:** Javier Elío^[Department of Planning, Aalborg University, Copenhagen, Denmark; ORCID: [0000-0003-0624-2345](https://orcid.org/0000-0003-0624-2345); javierdem@plan.aau.dk - javiereliomedina@gmail.com],
+Marina Georgati^[Department of Planning, Aalborg University, Copenhagen, Denmark; ORCID: [0000-0001-7794-8308](https://orcid.org/0000-0001-7794-8308); marinag@plan.aau.dk],
+Henning S. Hansen^[Department of Planning, Aalborg University, Copenhagen, Denmark; ORCID: [0000-0001-7004-0698](https://orcid.org/0000-0001-7004-0698); hsh@plan.aau.dk],
+Carsten Keßler^[Department of Planning, Aalborg University, Copenhagen, Denmark; ORCID: [0000-0002-9724-820X](https://orcid.org/0000-0002-9724-820X); kessler@plan.aau.dk].\
+
+# Prerequisites
+
+The data have been analysed with **R** (version `r paste(R.Version()$major, R.Version()$minor, sep = ".")`) and **Rstudio** (version `r rstudioapi::versionInfo()$version`). 
+
+```{r pkgs, results='hide'}
+
+# List of packages 
+my_pkgs <- c("compositions", 
+             "broom",
+             "data.table", "danstat", "dint",
+             "furrr",
+             "ggspatial", "gtsummary", 
+             "kableExtra", "knitr",
+             "patchwork", "papeR", 
+             "rmarkdown", "remotes", 
+             "sf", "spdep",
+             "units",
+             "viridis",
+             "tidyverse", "tidytable", "tm")
+
+# Load packages
+lapply(my_pkgs, require, character.only = TRUE)
+
+```
+
+Set ggplot theme.
+
+```{r ggplot2-theme}
+
+# Set theme for ggplot ----
+theme_set(theme_bw() +
+            theme(plot.title = element_text(face = "bold", size = 9),
+                  legend.title = element_text(face = "bold", size = 7),
+                  legend.text = element_text(size = 7),
+                  axis.text = element_text(size = 7),
+                  plot.subtitle = element_text(size = 7),
+                  axis.title = element_text(size = 7)))
+
+```
+
+# Data
+
+## Administrative units
+
+Parishes of the Capital region downloaded from [kortforsyningen](https://kortforsyningen.dk/). We have created our own package for dowloading the data a local repository directly from R (i.e. [dangeo](https://github.com/javiereliomedina/dangeo.git)). The package can be downloaded from GitHub: 
+
+```{r install-github-packages}
+
+# Install packages from GitHub
+if(!require("devtools"))  install.packages("devtools")
+
+if (!require("dangeo"))  remotes::install_github("javiereliomedina/dangeo")
+library(dangeo)
+
+```
+
+Although the *kortforsyningen* data are free, a *username* and a *password* is needed (["Opret ny bruger"](https://kortforsyningen.dk/indhold/min-side-0)). By default **dangeo** looks for credentials on `.Renviron` as: `kortforsyningen_id = "username"` and `kortforsyningen_pwd = "password"`. You would need to save them with `usethis::edit_r_environ()`: 
+
+```{r dangeo}
+
+# Set username and password 
+# usethis::edit_r_environ() # Open .Renviron file, and save the username (kortforsyningen_id = "your_username") and password (kortforsyningen_pwd = "your_password")
+
+```
+
+You would also need to define with `dangeo_set_param()` the local directory where the data are downloaded (`loc_dir`). It is defined as `loc_dir = rappdirs::user_cache_dir()`, although it can be changed `loc_dir = “./your/local/path”`. The first time a file is downloaded with `dangeo_get_data()`, the process can be time consuming (there are some very big files). However, it will not be downloaded in subsequent calls if the files is already in the local directory (the dataset can be overwritten be setting `overwrite = TRUE` on `dangeo_get_data()`). Once we have our *username* and *password*, and we have define the local repository for the data, we should set them on our R-session:
+
+```{r set-dangeo-param}
+
+# Set local repository and password to kortforsyningen
+dangeo_set_param()
+
+```
+
+Load data: 
+
+```{r load-adm-units}
+
+# Download DAGI (scale 1:10000)
+dangeo_get_data(ftp_folder = "landinddelinger/dagi/SHAPE",
+                zip_name   = "DAGIREF_SHAPE_UTM32-EUREF89.zip")
+
+# Municipalities (get from DAGI)
+muni_link <- paste(loc_dir,
+                   "DAGIREF_SHAPE_UTM32-EUREF89/ADM",
+                   "KOMMUNE.shp",
+                   sep = "/")
+dk_muni  <- read_sf(muni_link) %>%
+  st_zm() %>% 
+  st_transform(crs = "EPSG:25832") %>% 
+  select(KOMKODE, KOMNAVN) %>% 
+  rename(muni_id = KOMKODE,
+         muni_name = KOMNAVN) %>% 
+  group_by(muni_id, muni_name) %>%
+  summarise(geometry = sf::st_union(geometry)) %>%
+  ungroup() %>% 
+  # Calculate the area of each municipalitie (km2) 
+  mutate(area_km2 = as.numeric(units::set_units(st_area(.), km^2))) 
+
+# Country
+dk_country <- st_union(dk_muni)
+
+# Codes of the communes under study
+cptl_muni <- c("København",
+                      "Frederiksberg",
+                      "Albertslund",
+                      "Ballerup",
+                      "Brøndby",
+                      "Dragør",
+                      "Gentofte",
+                      "Gladsaxe",
+                      "Glostrup",
+                      "Herlev",
+                      "Høje-Taastrup",
+                      "Hvidovre",
+                      "Ishøj",
+                      "Lyngby-Taarbæk",
+                      "Rødovre",
+                      "Tårnby",
+                      "Vallensbæk")
+
+# Select municipalities under study  
+cptl_muni <- dk_muni %>% filter(muni_name %in% cptl_muni) 
+
+dk_country_crop <- st_crop(dk_country, cptl_muni)
+
+# Parishes polygons of Denmark, and select those in the study area 
+prsh_link <- paste(loc_dir,
+                   "DAGIREF_SHAPE_UTM32-EUREF89/ADM",
+                   "SOGN.shp",
+                   sep = "/")
+dk_prsh  <- read_sf(prsh_link) %>%
+  st_zm() %>% 
+  st_transform(crs = "EPSG:25832")
+
+# Select those where the centroid is in the capital region
+dk_prsh_cent <- st_centroid(dk_prsh)
+cptl_prsh_cent <- st_intersection(dk_prsh_cent, cptl_muni)
+
+cptl_prsh <- dk_prsh %>% 
+  # Get parishes in the capital region
+  filter(SOGNEKODE %in% cptl_prsh_cent$SOGNEKODE) %>% 
+  # Combine several parish features geometries into one polygon
+  group_by(SOGNEKODE, SOGNENAVN) %>% 
+  summarise(geometry = st_union(geometry)) %>% 
+  ungroup() %>% 
+  # add area of the parish (in km2)
+  mutate(prsh_area_km2 = as.numeric(units::set_units(st_area(.), km^2))) %>% 
+  # Translate column names
+  rename(prsh_id = SOGNEKODE,
+         prsh_name = SOGNENAVN) 
+
+# Contour of the capital region (merge the parishes in one polygon):
+cptl_area <- cptl_prsh %>%
+  st_union() %>%
+  st_sf() %>% 
+  st_transform(crs = "EPSG:25832")
+  
+```
+
+```{r fig-cap-reg-prsh, fig.cap = "Study area"}
+
+ggplot() + 
+  geom_sf(data = cptl_prsh, 
+          fill = "grey", 
+          color = "grey50", 
+          size = 0.05) +
+  geom_sf(data = cptl_muni, 
+          fill = NA, 
+          color = "black",
+          size = 0.5) +
+  theme_void() +
+  annotation_scale(location = "br", text_cex = 1) +
+  annotation_north_arrow(location = "br",
+                         pad_x = unit(2, "cm"),
+                         pad_y = unit(0.65, "cm"),
+                         which_north = "true",
+                         height = unit(0.5, "cm"),
+                         width = unit(0.5, "cm"),
+                         style = north_arrow_orienteering(text_col = "white",
+                                                          text_size = 1))
+
+```
+
+## Population data at parish level 
+
+Population data were uploaded from Denmark Statistics (i.e. Table [KMSTA001: Population 1. January by parish, ancestry and National Church](https://www.statbank.dk/statbank5a/SelectVarVal/Define.asp?MainTable=KMSTA001&PLanguage=1&PXSId=0&wsid=cftree)).
+
+```{r aux-functions}
+
+## Auxiliary functions for reading the data with the package *danstat*
+
+# Loop by year for getting DST data 
+  steps <- function(year){
+    var_values <- list(id_region, id_ancestry, year)
+    var_input <- purrr::map2(.x = var_codes,
+                             .y = var_values,
+                             .f = ~list(code = .x, values = .y))
+    get_data(id_table, variables = var_input)
+  }
+ 
+# Function for removing punctuation, lowercase, stem, stopwords, and collapse strings
+  rm_words <- function(x, stopwords) { x %>% 
+      strsplit(" ", fixed = TRUE) %>% 
+      lapply(tm::removePunctuation) %>% 
+      lapply(tolower) %>% 
+      lapply(SnowballC::wordStem) %>% 
+      lapply(function(x) x[!x %in% stopwords]) %>% 
+      vapply(function(x) paste(x , collapse = "_"), character(1))
+  }
+  
+```
+
+```{r pop-parish-KMSTA001}
+
+## Read and clean table KMSTA001
+
+# Table 
+id_table <- "KMSTA001"
+var_pop <- get_table_metadata(table_id = id_table, variables_only = TRUE)
+
+# Codes for var_input
+var_codes <- c("SOGN", "HERKOMST", "Tid")
+
+# Values for var_input
+# Region: parishes of the study area (i.e. cptl_parish)
+id_region <- cptl_prsh$prsh_id 
+# Ancestry
+id_ancestry <- NA
+# Quarters
+id_year <- 2020  # vector with years
+
+# Read data (n parallel) 
+plan(multisession, workers = 7)
+cptl_prsh_ancestry_read <- id_year %>%
+  future_map_dfr(steps)  
+plan("default")
+
+# Clean data 
+cptl_prsh_ancestry <- cptl_prsh_ancestry_read %>% 
+  # Translate column names into English
+  rename(parish = SOGN,
+         ancestry = HERKOMST,
+         year = TID, 
+         value = INDHOLD) %>%
+  # Get parish codes, names, and municipality names
+  separate(parish,
+           c("prsh_id", "prsh_name", "muni_name"),
+           sep = " ",
+           extra = "drop") %>% 
+  mutate(muni_name = gsub("\\(", "", muni_name)) %>% 
+  # Make shorter names in ancestry
+  mutate(ancestry = case_when(
+    ancestry == "Persons of Danish origin" ~ "pop_dan",
+    ancestry == "Immigrants from western countries" ~ "pop_mi_wst",
+    ancestry == "Immigrants from non-western countries" ~ "pop_mi_nwst",
+    ancestry == "Descendants from western countries" ~ "pop_de_wst",
+    ancestry == "Descendants from non-western countries" ~ "pop_de_nwst"), 
+    ancestry = factor(ancestry)) %>% 
+  # Pivot (one row for peach parish and year)
+  pivot_wider(names_from = ancestry, values_from = value) %>% 
+  # Merge immigrants and their descendants (i.e. foreigners) 
+  mutate(pop_frgn_wst = pop_mi_wst + pop_de_wst, 
+         pop_frgn_nwst = pop_mi_nwst + pop_de_nwst) %>% 
+  select(-c(pop_mi_wst, pop_de_wst, pop_mi_nwst, pop_de_nwst)) %>% 
+  # Add column with total population
+  mutate(pop_total = select(., starts_with("pop_")) %>% rowSums()) %>% 
+  # Put NA when pop_* is 0
+  mutate(across(starts_with("pop"), ~ifelse(.x == 0, NA, .x)))
+
+# Add the spatial information:
+cptl_prsh_ancestry_sf <- cptl_prsh %>%
+  select(prsh_id, prsh_area_km2) %>% 
+  left_join(cptl_prsh_ancestry, by = c("prsh_id")) %>% 
+  # Population density
+  mutate(across(starts_with("pop"), ~.x/prsh_area_km2, .names = "{.col}_km2")) %>% 
+  # Population in percentage   
+  mutate(across(.cols = c(pop_dan, pop_frgn_wst, pop_frgn_nwst, pop_total),
+                .fns = ~ 100 * .x / pop_total,
+                .names = "{.col}_pct")) 
+
+```
+
+## Housing price
+
+We have got the housing prices from the Building and Dwelling Register ([BBR](https://teknik.bbr.dk/forside)). The individual data are not free and we have therefore only saved here the summary statistics (i.e. mean and media values).
+
+```{r runits-oft-prices-parish}
+
+sum_runits_oft_prices <- readRDS("sum_runits_oft_prices.rds") %>% 
+  # Remove NAs
+  drop_na() %>% 
+  # sf objects
+  st_sf()
+
+```
+
+# Analysis
+
+## Population at parish level 
+
+Distribution of Danes, Western, and non-Western population (in percentage over the total population in the parish).
+
+```{r pop-parish-summary}
+
+cptl_prsh_ancestry_sf %>%
+  as_tibble() %>% 
+  select(pop_dan_pct, pop_frgn_nwst_pct, pop_frgn_wst_pct, -geometry) %>%
+  rename(Danes = pop_dan_pct,
+         Non_Western = pop_frgn_nwst_pct,
+         Western = pop_frgn_wst_pct) %>% 
+  pivot_longer(cols = everything(),
+               names_to = "names",
+               values_to = "value") %>% 
+  # Summary values
+  tbl_summary(by = names,
+              type = all_continuous() ~ "continuous2",
+              statistic = all_continuous() ~ c("{mean}",
+                                               "{median}",
+                                               "{p25} - {p75}",
+                                               "{min} - {max}"),
+              missing = "no",
+              digits = all_continuous() ~ 1) %>%
+  bold_labels()
+
+
+```
+
+```{r fig-pop-parish, fig.height=10, fig.width=5, fig.cap = "Population distribution"}
+
+cptl_prsh_ancestry_sf %>%
+  select(pop_dan_pct, pop_frgn_nwst_pct, pop_frgn_wst_pct) %>%
+  rename(Danes = pop_dan_pct,
+         Non_Western = pop_frgn_nwst_pct,
+         Western = pop_frgn_wst_pct) %>% 
+  pivot_longer(cols = -geometry,
+               names_to = "names",
+               values_to = "value") %>%
+  st_sf() %>% 
+  ggplot() +
+  geom_sf(aes(fill = value ), color = "grey", size = 0.05) +
+  scale_fill_viridis(name = "Percentage",
+                     option = "magma",
+                     direction = -1, 
+                     limits = c(0, 100)) +
+  theme_void() +
+  facet_wrap(~names, ncol = 1)
+
+```
+
+## Housing price
+
+Spatial distribution of median values.
+
+```{r fig-prices-runits-parish-b,  fig.cap = "Median house prices in the ordinary free trade"}
+
+ggplot() +
+  geom_sf(data = dk_country_crop, fill = "grey") + 
+  geom_sf(data = sum_runits_oft_prices,
+          aes(fill = cut_number(median_kDKK_m2,
+                                n = 10,
+                                ordered_result = TRUE,
+                                dig.lab = 0)),
+          color = "grey",
+          size = 0.05) +
+  geom_sf(data = cptl_muni, fill = NA, color = "white", size = 0.5) +
+  scale_fill_viridis_d(name = "Percentiles\n[kDKK/m2]",
+                     option = "magma",
+                     direction = -1) +
+  labs(x = "",
+       y = "") +
+  theme_void() +
+  guides(fill = guide_legend(reverse = TRUE))
+
+```
+
+The summary descriptive statistics of the housing prices by parishes:
+
+```{r tbl-summary-runits-oft-cptl, cache=TRUE}
+
+# Create variable labels of the variables to be printed in the table
+labelled::var_label(sum_runits_oft_prices$n_runits_oft)   <- "N. houses in the ordinary free trade"
+labelled::var_label(sum_runits_oft_prices$mean_kDKK_m2)   <- "Mean (kDKK/m2)"
+labelled::var_label(sum_runits_oft_prices$median_kDKK_m2) <- "Median (kDKK/m2)"
+
+# Summary table
+sum_runits_oft_prices %>% 
+  as_tibble() %>% 
+  # Select variables of interest
+  select(n_runits_oft, mean_kDKK_m2,  median_kDKK_m2) %>%
+  # Summary values
+  tbl_summary(type = all_continuous() ~ "continuous2",
+              statistic = all_continuous() ~ c("{mean}",
+                                               "{median}",
+                                               "{p25} - {p75}",
+                                               "{min} - {max}"),
+              missing = "no",
+              digits = all_continuous() ~ 1) %>%
+  bold_labels()
+
+```
+
+## Compositional data analysis
+
+Ternary representation of population distribution. We made the ternary plots in a separate project ([https://javiereliomedina.github.io/ternary_maps_DK/](https://javiereliomedina.github.io/ternary_maps_DK/) because there are some conflicts between *ggtern (3.3.0)* and *ggplot2 (3.3.5)*). Here we only load the results. 
+
+```{r fig-tern-pop, fig.cap = "Population distribution in 2020", fig.height=5, fig.width=5}
+
+knitr::include_graphics("pop_tern.png")
+
+```
+
+### Balances
+
+Transform data to CoDa format. 
+
+```{r prsh-CoDa}
+
+# Transform to CoDa format
+dat_acomp <- cptl_prsh_ancestry_sf %>%
+  select(prsh_id, pop_dan, pop_frgn_nwst, pop_frgn_wst) %>%
+  rename(dan = pop_dan, 
+         nwst = pop_frgn_nwst,
+         wst = pop_frgn_wst) %>% 
+  as_tibble() %>%
+  drop_na() %>% 
+  select(-geometry) %>%
+  # Close dataset
+  clo(parts = c("dan", "nwst", "wst"),
+      total = 100) %>% 
+  # CoDa
+  acomp()
+
+```
+
+PCA with clr transformations.  
+
+```{r prsh-CoDa-PCA, fig.height=5, fig.width=9, fig.cap="Biplot of clr transfomation and balance dendrogram"}
+
+# PCA
+pc <- princomp(dat_acomp)
+
+pca_importance <- function(x) {
+  vars <- x$sdev^2
+  vars <- vars/sum(vars)
+  rbind("Standard deviation" = x$sdev,
+        "Proportion of Variance" = vars,
+        "Cumulative Proportion" = cumsum(vars))
+}
+
+pca_importance(summary(pc)) %>% 
+  kbl(caption = "Importance of components",
+      digits = 3) %>%
+  kable_styling()
+
+```
+
+Biplot and balance-dendrogram:
+
+```{r fig-prsh-CoDa-PCA, fig.height=5, fig.width=10, fig.cap="Biplot of clr transfomation and balance dendrogram"}
+
+par(mfrow = c(1, 2))
+coloredBiplot(x = pc,
+              pc.biplot = T,
+              xlabs.pc = c(1, 2, 3),
+              xlabs.col = 2:4,
+              col = "black",
+              xlab = "Comp. 1 (73%)",
+              ylab = "Comp. 1 (27%)",
+              xlim = c(-3.5, 2))
+
+# Dendrogram balances
+signary <- t(matrix( c(1, -1,  1,
+                       1,  0, -1),
+                     ncol = 3,
+                     nrow = 2,
+                     byrow = TRUE))
+CoDaDendrogram(X = dat_acomp,
+               signary = signary,
+               col = "black",
+               type = "l",
+               main = "CoDa Dendrogram")
+
+```
+
+Add balances (b1 and b2) to the dataset:
+
+```{r prsh-CoDa-balances}
+
+cptl_prsh_ancestry_sf <- cptl_prsh_ancestry_sf %>%
+  mutate(b1 = sqrt(2/3) * log( ((pop_dan * pop_frgn_wst)^0.5) / (pop_frgn_nwst)),
+         b2 = sqrt(1/2) * log(pop_dan / pop_frgn_wst))
+
+```
+
+Higher values of b1 indicate less non-Western population:
+
+```{r fig-b1-non-wst, fig.height=3, fig.width=4.5, fig.cap = "Non-Western population vs. balance 1"}
+
+cptl_prsh_ancestry_sf %>%
+  ggplot() +
+  geom_point(aes(x = b1,
+                 y = pop_frgn_nwst_pct)) + 
+  labs(y = "non-Western population [%]")
+  
+```
+
+### Spatial autocorrelation of balances 
+
+Global Moran index:
+
+```{r prsh-CoDa-moran-global}
+
+# Moran
+nb <- poly2nb(cptl_prsh_ancestry_sf, queen = TRUE)
+wts <- nb2listw(nb, style = "W", zero.policy = TRUE)
+
+# Global index
+GMI_b1 <- moran.test(cptl_prsh_ancestry_sf$b1, listw = wts) %>%
+  tidy() %>% 
+  mutate(balance = "b1") %>% 
+  select(balance, everything()) %>% 
+  rename(moran_I  = estimate1,
+         expectation = estimate2,
+         variance = estimate3)
+
+GMI_b2 <- moran.test(cptl_prsh_ancestry_sf$b2, listw = wts) %>%
+  tidy() %>% 
+  mutate(balance = "b2") %>% 
+  select(balance, everything()) %>% 
+  rename(moran_I  = estimate1,
+         expectation = estimate2,
+         variance = estimate3)
+
+bind_rows(GMI_b1, GMI_b2) %>%
+  kbl(caption = "Spatial autocorrelation of balances",
+      digits = c(rep(3, 5), 32)) %>%
+  kable_styling()
+
+```
+
+Local Moran index: 
+
+```{r plot-moran}
+
+# Local Moran index
+
+f_local_moran <- function(year, 
+                          variable, 
+                          df = cptl_prsh_ancestry_sf, 
+                          signif = 0.15) { 
+  
+  # Polygons
+  s <- df %>%
+    # Select
+    filter(year == {{ year }}) %>% 
+    drop_na() %>% 
+    st_sf() 
+  
+  # Variable
+  x <- s %>% 
+    # Variable
+    pull( {{ variable }}) 
+  
+  # Plot MI
+  xp <- x %>% 
+    # Local Index
+    localmoran_perm(listw = nb2listw(poly2nb(s, queen = TRUE),
+                                     style = "W",
+                                     zero.policy = TRUE),
+                    nsim = 999) %>% 
+    as_tibble() %>% 
+    dplyr::rename(p.value = `Pr(z > 0)`) %>% 
+    # binds results to our polygon shapefile
+    cbind(s) %>% 
+    st_sf() %>% 
+    # center the variable of interest around its mean
+    mutate(m_qualification = x - mean( x ),
+           m_local = Ii - mean(Ii)) %>% 
+    # Build quadrant
+    mutate(quadrant = case_when(m_qualification > 0 & m_local > 0 ~ 4,
+                                m_qualification < 0 & m_local < 0 ~ 1,
+                                m_qualification < 0 & m_local > 0 ~ 2,
+                                m_qualification > 0 & m_local < 0 ~ 3),
+           quadrant = ifelse(p.value > signif, 0, quadrant)) %>% 
+    mutate(quadrant = factor(quadrant,
+                             levels = c(0, 1, 2, 3, 4), 
+                             labels =  c("Insignificant",
+                                         "Low-Low",
+                                         "Low-High",
+                                         "High-Low",
+                                         "High-High"))) 
+  
+  xp %>% 
+    # Plot quadrants (LISA)
+    ggplot() +
+    geom_sf(data = cptl_prsh, fill = "black") + 
+    geom_sf(aes(fill = quadrant), color = "grey", size = 0.05) +
+    scale_fill_manual(name = "Quadrant" ,
+                      values = c("lightgrey",
+                                 "#0000FF",
+                                 "#A2A2FF",
+                                 "#FFA2A2",
+                                 "#FF0000"),
+                      drop = FALSE) +
+    labs(title = {{ variable }}) +
+    theme_void()
+  
+}
+
+```
+
+```{r fig-local-moran-balances, fig.cap="LISA plot for each balance", fig.height=4, fig.width=10}
+
+p1 <- f_local_moran(df = cptl_prsh_ancestry_sf,
+              year = 2020, 
+              variable = "b1", 
+              signif = 0.1)
+
+p2 <- f_local_moran(df = cptl_prsh_ancestry_sf,
+              year = 2020, 
+              variable = "b2", 
+              signif = 0.1)
+
+p1 + p2 + plot_layout(guides = "collect")
+
+```
+
+### Hierarchical cluster:
+
+```{r prsh-CoDa-cluster}
+
+# Dissimilarity matrix
+d <- cptl_prsh_ancestry_sf %>% 
+  select(b1, b2) %>% 
+  as_tibble() %>% 
+  select(-geometry) %>% 
+  scale() %>% 
+  dist(method = "euclidean", diag = FALSE, upper = FALSE, p = 2)
+
+# Hierarchical clustering
+hcl <- hclust(d, method = "ward.D2")
+
+# Add four Clusters
+cptl_prsh_ancestry_sf <- cptl_prsh_ancestry_sf %>%
+  mutate(CL2 = cutree(hcl, k = 2),
+         CL3 = cutree(hcl, k = 3),
+         CL4 = cutree(hcl, k = 4)) %>% 
+  mutate(across(.cols = c(CL2, CL3, CL4), .fns = factor))
+
+```
+
+```{r fig-prsh-CoDa-cluster, fig.height=5, fig.width=10, fig.cap = "Cluster dendrogram"}
+
+# Plot
+plot(hcl, hang = -1, cex = 0.4, xlab = "Parish ID")
+rect.hclust(hcl, k = 4, border = "red")
+ 
+```
+
+```{r fig-prsh-CoDa-cluster-k4, fig.cap = "Clusters based on balances (b1 amd b2)"}
+
+pCL2 <- cptl_prsh_ancestry_sf %>% 
+  ggplot() +
+  geom_sf(aes(fill = CL2)) +
+  scale_fill_manual(name = "Cluster",
+                    values = c("#542788",
+                               "#B35806")) +
+  geom_sf(data = cptl_muni, fill = NA, color = "white", size = 0.5) +
+  theme_void()
+
+pCL3 <- cptl_prsh_ancestry_sf %>% 
+  ggplot() +
+  geom_sf(aes(fill = CL3)) +
+  scale_fill_manual(name = "Cluster",
+                    values = c("#998EC3",
+                               "#D8DAEB",
+                               "#B35806")) +
+  geom_sf(data = cptl_muni, fill = NA, color = "white", size = 0.5) +
+  theme_void()
+
+pCL4 <- cptl_prsh_ancestry_sf %>% 
+  ggplot() +
+  geom_sf(aes(fill = CL4)) +
+  scale_fill_manual(name = "Cluster",
+                    values = c("#998EC3",
+                               "#D8DAEB",
+                               "#F1A340",
+                               "#FEE0B6")) +
+  geom_sf(data = cptl_muni, fill = NA, color = "white", size = 0.5) +
+  theme_void()
+ 
+pCL4
+
+```
+Population statistics (in percentage) by clusters (k = 4): 
+
+```{r prsh-CoDa-cluster-k-tbl}
+
+# Create variable labels of the variables to be printed in the table
+labelled::var_label(cptl_prsh_ancestry_sf$pop_dan_pct)       <- "Danes"
+labelled::var_label(cptl_prsh_ancestry_sf$pop_frgn_wst_pct)  <- "Western"
+labelled::var_label(cptl_prsh_ancestry_sf$pop_frgn_nwst_pct) <- "Non-Western"
+
+# table
+cptl_prsh_ancestry_sf %>% 
+  as_tibble() %>% 
+  select(CL4, pop_dan_pct,	pop_frgn_wst_pct,	pop_frgn_nwst_pct,  -geometry) %>% 
+  tbl_summary(by = CL4,
+              type = all_continuous() ~ "continuous2",
+              statistic = all_continuous() ~ c("{mean}",
+                                               "{median}",
+                                               "{p25} - {p75}",
+                                               "{min} - {max}"),
+              missing = "no",
+              digits = all_continuous() ~ 1) %>%
+  bold_labels()
+
+```
+
+Box-plot: 
+
+```{r fig-prsh-CoDa-cluster-boxplot, fig.height=3, fig.width=6, fig.cap="Boxplots of the population structure in each cluster"}
+
+cptl_prsh_ancestry_sf %>% 
+  select(CL4, pop_dan_pct, pop_frgn_nwst_pct, pop_frgn_wst_pct) %>%
+  as_tibble() %>%
+  pivot_longer(!c(CL4, geometry),
+               names_to = "name", 
+               values_to = "value") %>%
+  mutate(name = gsub("pop_", "", name),
+         name = gsub("_pct", "", name),
+         name = gsub("frgn_", "", name))  %>%
+  ggplot() + 
+  geom_boxplot(aes(y = value, x = name, fill = CL4)) +
+  scale_fill_manual(name = "Cluster",
+                    values = c("#998EC3",
+                               "#D8DAEB",
+                               "#F1A340",
+                               "#FEE0B6")) +
+  labs(x = "",
+       y = "Percentage [%]")  +
+  theme(legend.position = "none") +
+  facet_grid(~CL4) 
+
+```
+
+Cluster (k = 4) vs. house prices:
+
+```{r cluster-prices}
+
+as_tibble(sum_runits_oft_prices) %>%
+  left_join(as_tibble(cptl_prsh_ancestry_sf)) %>% 
+  droplevels() %>% 
+  select(CL4, mean_kDKK_m2, median_kDKK_m2, -geometry) %>% 
+  tbl_summary(by = CL4,
+              type = all_continuous() ~ "continuous2",
+              statistic = all_continuous() ~ c("{mean}",
+                                               "{median}",
+                                               "{p25} - {p75}",
+                                               "{min} - {max}"),
+              missing = "no",
+              digits = all_continuous() ~ 1) %>%
+  bold_labels()
+
+```
+
+### Linear model
+
+Ternary diagram with house prices (zoom the figure to the parishes with median values). 
+
+```{r fig-tern-pop-prices, fig.cap = "Ternary diagram of population distribution vs. housing prices", fig.height=5, fig.width=5}
+
+knitr::include_graphics("pop_tern_prices.png")
+
+```
+
+Linear model 
+
+```{r prsh-CoDa-house-prices-lm}
+# Link median prices (sum_runits_oft_prices) with population (balances)
+
+bal_prices <- sum_runits_oft_prices %>% 
+  # Select variables of interest
+  select(prsh_id,
+         pop_dan,
+         pop_frgn_wst,
+         pop_frgn_nwst, 
+         pop_total_km2,
+         median_kDKK_m2) %>% 
+  # Add balances
+  mutate(b1 = sqrt(2/3) * log( ((pop_dan * pop_frgn_wst)^0.5) / (pop_frgn_nwst)),
+         b2 = sqrt(1/2) * log(pop_dan / pop_frgn_wst))
+
+# Model prices
+m1 <- lm(log10(median_kDKK_m2) ~ b1 + b2, data = bal_prices)
+
+```
+
+Regression coefficients: 
+```{r tbl-prsh-CoDa-house-prices-lm, results='asis'}
+
+summary(m1) %>% 
+  prettify() %>% 
+  kbl(caption = "Regression coefficients (β) of the log-linear model",
+      digits = 3) %>%
+  kable_styling()
+
+```
+
+Values vs. predictions: 
+
+```{r fig-prsh-CoDa-house-prices-lm, fig.cap="Predictions based on balances (b1 and b2) vs. median values (red line: x = y)", fig.height=3, fig.width=3}
+
+bal_prices$pred1 <- predict(m1)
+
+ggplot() +
+  geom_point(data = bal_prices,
+             aes(x = 10^pred1,
+                 y = median_kDKK_m2)) +
+  scale_x_continuous(name = "Prediction [kDKK/m2]",
+                     trans = "log10") +
+  scale_y_continuous(name = "Median values [kDKK/m2]", 
+                     trans = "log10") +
+  geom_abline(intercept = 0,
+              slope = 1,
+              colour = "red")
+
+```
+
+# Acknowledgements 
+
+This work has been financed by Aalborg University - AAU (Project: [Global flows of migrants and their impact on north European welfare states - FLOW](https://www.flow.aau.dk/)). The sole responsibility of this publication lies with the authors. AAU is not responsible for any use that may be made of the information contained therein.
+
+# R session 
+
+```{r R-session, echo = FALSE}
+
+sessionInfo()
+
+```
+
+
+
