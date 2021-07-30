@@ -35,7 +35,7 @@ f_runits_oft_capital <- function(.file, .muni = study_area_codes) {
     droplevels() %>% 
     # ordinary free trade or auction
     filter.(OVERDRAGELSES_KODE == "1" | OVERDRAGELSES_KODE == "3") %>% 
-    # Remove prices > 0 kDKK
+    # Remove prices = 0 kDKK
     filter.(price_kDKK > 0) %>% 
     # House prices per m2
     mutate.(price_kDKK_m2 = price_kDKK / BEBO_ARL)

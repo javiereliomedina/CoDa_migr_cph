@@ -129,22 +129,22 @@ dk_country <- st_union(dk_muni)
 
 # Codes of the communes under study
 cptl_muni <- c("København",
-                      "Frederiksberg",
-                      "Albertslund",
-                      "Ballerup",
-                      "Brøndby",
-                      "Dragør",
-                      "Gentofte",
-                      "Gladsaxe",
-                      "Glostrup",
-                      "Herlev",
-                      "Høje-Taastrup",
-                      "Hvidovre",
-                      "Ishøj",
-                      "Lyngby-Taarbæk",
-                      "Rødovre",
-                      "Tårnby",
-                      "Vallensbæk")
+               "Frederiksberg",
+               "Albertslund",
+               "Ballerup",
+               "Brøndby",
+               "Dragør",
+               "Gentofte",
+               "Gladsaxe",
+               "Glostrup",
+               "Herlev",
+               "Høje-Taastrup",
+               "Hvidovre",
+               "Ishøj",
+               "Lyngby-Taarbæk",
+               "Rødovre",
+               "Tårnby",
+               "Vallensbæk")
 
 # Select municipalities under study  
 cptl_muni <- dk_muni %>% filter(muni_name %in% cptl_muni) 
@@ -226,16 +226,6 @@ Population data were uploaded from Denmark Statistics (i.e. Table [KMSTA001: Pop
     get_data(id_table, variables = var_input)
   }
  
-# Function for removing punctuation, lowercase, stem, stopwords, and collapse strings
-  rm_words <- function(x, stopwords) { x %>% 
-      strsplit(" ", fixed = TRUE) %>% 
-      lapply(tm::removePunctuation) %>% 
-      lapply(tolower) %>% 
-      lapply(SnowballC::wordStem) %>% 
-      lapply(function(x) x[!x %in% stopwords]) %>% 
-      vapply(function(x) paste(x , collapse = "_"), character(1))
-  }
-  
 ```
 
 ```{r pop-parish-KMSTA001}
@@ -350,7 +340,6 @@ cptl_prsh_ancestry_sf %>%
               digits = all_continuous() ~ 1) %>%
   bold_labels()
 
-
 ```
 
 ```{r fig-pop-parish, fig.height=10, fig.width=5, fig.cap = "Population distribution"}
@@ -365,7 +354,9 @@ cptl_prsh_ancestry_sf %>%
                values_to = "value") %>%
   st_sf() %>% 
   ggplot() +
+  geom_sf(data = dk_country_crop, fill = "grey") +  
   geom_sf(aes(fill = value ), color = "grey", size = 0.05) +
+  geom_sf(data = cptl_muni, fill = NA, color = "white", size = 0.5) +
   scale_fill_viridis(name = "Percentage",
                      option = "magma",
                      direction = -1, 
@@ -621,8 +612,9 @@ f_local_moran <- function(year,
   xp %>% 
     # Plot quadrants (LISA)
     ggplot() +
-    geom_sf(data = cptl_prsh, fill = "black") + 
+    geom_sf(data = dk_country_crop, fill = "grey") +
     geom_sf(aes(fill = quadrant), color = "grey", size = 0.05) +
+    geom_sf(data = cptl_muni, fill = NA, color = "white", size = 0.5) + 
     scale_fill_manual(name = "Quadrant" ,
                       values = c("lightgrey",
                                  "#0000FF",
@@ -689,7 +681,9 @@ rect.hclust(hcl, k = 4, border = "red")
 
 pCL2 <- cptl_prsh_ancestry_sf %>% 
   ggplot() +
+  geom_sf(data = dk_country_crop, fill = "grey") +
   geom_sf(aes(fill = CL2)) +
+  geom_sf(data = cptl_muni, fill = NA, color = "white", size = 0.5) +
   scale_fill_manual(name = "Cluster",
                     values = c("#542788",
                                "#B35806")) +
@@ -698,7 +692,9 @@ pCL2 <- cptl_prsh_ancestry_sf %>%
 
 pCL3 <- cptl_prsh_ancestry_sf %>% 
   ggplot() +
+  geom_sf(data = dk_country_crop, fill = "grey") +
   geom_sf(aes(fill = CL3)) +
+  geom_sf(data = cptl_muni, fill = NA, color = "white", size = 0.5) +
   scale_fill_manual(name = "Cluster",
                     values = c("#998EC3",
                                "#D8DAEB",
@@ -708,7 +704,9 @@ pCL3 <- cptl_prsh_ancestry_sf %>%
 
 pCL4 <- cptl_prsh_ancestry_sf %>% 
   ggplot() +
+  geom_sf(data = dk_country_crop, fill = "grey") +
   geom_sf(aes(fill = CL4)) +
+  geom_sf(data = cptl_muni, fill = NA, color = "white", size = 0.5) +
   scale_fill_manual(name = "Cluster",
                     values = c("#998EC3",
                                "#D8DAEB",
@@ -720,6 +718,7 @@ pCL4 <- cptl_prsh_ancestry_sf %>%
 pCL4
 
 ```
+
 Population statistics (in percentage) by clusters (k = 4): 
 
 ```{r prsh-CoDa-cluster-k-tbl}
