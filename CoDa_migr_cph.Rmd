@@ -20,14 +20,19 @@ set.seed(42)
 
 ```
 
-**Authors:** Javier Elío^[Department of Planning, Aalborg University, Copenhagen, Denmark; ORCID: [0000-0003-0624-2345](https://orcid.org/0000-0003-0624-2345); javierdem@plan.aau.dk - javiereliomedina@gmail.com],
-Marina Georgati^[Department of Planning, Aalborg University, Copenhagen, Denmark; ORCID: [0000-0001-7794-8308](https://orcid.org/0000-0001-7794-8308); marinag@plan.aau.dk],
-Henning S. Hansen^[Department of Planning, Aalborg University, Copenhagen, Denmark; ORCID: [0000-0001-7004-0698](https://orcid.org/0000-0001-7004-0698); hsh@plan.aau.dk],
-Carsten Keßler^[Department of Planning, Aalborg University, Copenhagen, Denmark; ORCID: [0000-0002-9724-820X](https://orcid.org/0000-0002-9724-820X); kessler@plan.aau.dk].\
+**Authors:** Javier Elío[^1], Marina Georgati[^2], Henning S. Hansen[^3], Carsten Keßler[^4].\
+
+[^1]: Department of Planning, Aalborg University, Copenhagen, Denmark; ORCID: [0000-0003-0624-2345](https://orcid.org/0000-0003-0624-2345); [javierdem\@plan.aau.dk](mailto:javierdem@plan.aau.dk){.email} - [javiereliomedina\@gmail.com](mailto:javiereliomedina@gmail.com){.email}
+
+[^2]: Department of Planning, Aalborg University, Copenhagen, Denmark; ORCID: [0000-0001-7794-8308](https://orcid.org/0000-0001-7794-8308); [marinag\@plan.aau.dk](mailto:marinag@plan.aau.dk){.email}
+
+[^3]: Department of Planning, Aalborg University, Copenhagen, Denmark; ORCID: [0000-0001-7004-0698](https://orcid.org/0000-0001-7004-0698); [hsh\@plan.aau.dk](mailto:hsh@plan.aau.dk){.email}
+
+[^4]: Department of Planning, Aalborg University, Copenhagen, Denmark; ORCID: [0000-0002-9724-820X](https://orcid.org/0000-0002-9724-820X); [kessler\@plan.aau.dk](mailto:kessler@plan.aau.dk){.email}
 
 # Prerequisites
 
-The data have been analysed with **R** (version `r paste(R.Version()$major, R.Version()$minor, sep = ".")`) and **Rstudio** (version `r rstudioapi::versionInfo()$version`). 
+The data have been analysed with **R** (version `r paste(R.Version()$major, R.Version()$minor, sep = ".")`) and **Rstudio** (version `r rstudioapi::versionInfo()$version`).
 
 ```{r pkgs, results='hide'}
 
@@ -69,7 +74,7 @@ theme_set(theme_bw() +
 
 ## Administrative units
 
-Parishes of the Capital region downloaded from [kortforsyningen](https://kortforsyningen.dk/). We have created our own package for dowloading the data a local repository directly from R (i.e. [dangeo](https://github.com/javiereliomedina/dangeo.git)). The package can be downloaded from GitHub: 
+Parishes of the Capital region downloaded from [kortforsyningen](https://kortforsyningen.dk/). We have created our own package for dowloading the data a local repository directly from R (i.e. [dangeo](https://github.com/javiereliomedina/dangeo.git)). The package can be downloaded from GitHub:
 
 ```{r install-github-packages}
 
@@ -81,7 +86,7 @@ library(dangeo)
 
 ```
 
-Although the *kortforsyningen* data are free, a *username* and a *password* is needed (["Opret ny bruger"](https://kortforsyningen.dk/indhold/min-side-0)). By default **dangeo** looks for credentials on `.Renviron` as: `kortforsyningen_id = "username"` and `kortforsyningen_pwd = "password"`. You would need to save them with `usethis::edit_r_environ()`: 
+Although the *kortforsyningen* data are free, a *username* and a *password* is needed (["Opret ny bruger"](https://kortforsyningen.dk/indhold/min-side-0)). By default **dangeo** looks for credentials on `.Renviron` as: `kortforsyningen_id = "username"` and `kortforsyningen_pwd = "password"`. You would need to save them with `usethis::edit_r_environ()`:
 
 ```{r dangeo}
 
@@ -99,7 +104,7 @@ dangeo_set_param()
 
 ```
 
-Load data: 
+Load data:
 
 ```{r load-adm-units}
 
@@ -209,7 +214,7 @@ ggplot() +
 
 ```
 
-## Population data at parish level 
+## Population data at parish level
 
 Population data were uploaded from Denmark Statistics (i.e. Table [KMSTA001: Population 1. January by parish, ancestry and National Church](https://www.statbank.dk/statbank5a/SelectVarVal/Define.asp?MainTable=KMSTA001&PLanguage=1&PXSId=0&wsid=cftree)).
 
@@ -314,7 +319,7 @@ sum_runits_oft_prices <- readRDS("sum_runits_oft_prices.rds") %>%
 
 # Analysis
 
-## Population at parish level 
+## Population at parish level
 
 Distribution of Danes, Western, and non-Western population (in percentage over the total population in the parish).
 
@@ -420,7 +425,7 @@ sum_runits_oft_prices %>%
 
 ## Compositional data analysis
 
-Ternary representation of population distribution. We made the ternary plots in a separate project ([https://javiereliomedina.github.io/ternary_maps_DK/](https://javiereliomedina.github.io/ternary_maps_DK/) because there are some conflicts between *ggtern (3.3.0)* and *ggplot2 (3.3.5)*). Here we only load the results. 
+Ternary representation of population distribution. We made the ternary plots in a separate project (<https://javiereliomedina.github.io/ternary_maps_DK/> because there are some conflicts between *ggtern (3.3.0)* and *ggplot2 (3.3.5)*). Here we only load the results.
 
 ```{r fig-tern-pop, fig.cap = "Population distribution in 2020", fig.height=5, fig.width=5}
 
@@ -430,7 +435,7 @@ knitr::include_graphics("pop_tern.png")
 
 ### Balances
 
-Transform data to CoDa format. 
+Transform data to CoDa format.
 
 ```{r prsh-CoDa}
 
@@ -451,7 +456,7 @@ dat_acomp <- cptl_prsh_ancestry_sf %>%
 
 ```
 
-PCA with clr transformations.  
+PCA with clr transformations.
 
 ```{r prsh-CoDa-PCA, fig.height=5, fig.width=9, fig.cap="Biplot of clr transfomation and balance dendrogram"}
 
@@ -536,7 +541,7 @@ cptl_prsh_ancestry_sf %>%
   
 ```
 
-### Spatial autocorrelation of balances 
+### Spatial autocorrelation of balances
 
 Global Moran index:
 
@@ -570,7 +575,7 @@ bind_rows(GMI_b1, GMI_b2) %>%
 
 ```
 
-Local Moran index: 
+Local Moran index:
 
 ```{r plot-moran}
 
@@ -732,7 +737,7 @@ pCL4
 
 ```
 
-Population statistics (in percentage) by clusters (k = 4): 
+Population statistics (in percentage) by clusters (k = 4):
 
 ```{r prsh-CoDa-cluster-k-tbl}
 
@@ -757,7 +762,7 @@ cptl_prsh_ancestry_sf %>%
 
 ```
 
-Box-plot: 
+Box-plot:
 
 ```{r fig-prsh-CoDa-cluster-boxplot, fig.height=3, fig.width=6, fig.cap="Boxplots of the population structure in each cluster"}
 
@@ -806,7 +811,7 @@ as_tibble(sum_runits_oft_prices) %>%
 
 ### Linear model
 
-Ternary diagram with house prices (zoom the figure to the parishes with median values). 
+Ternary diagram with house prices (zoom the figure to the parishes with median values).
 
 ```{r fig-tern-pop-prices, fig.cap = "Ternary diagram of population distribution vs. housing prices", fig.height=5, fig.width=5}
 
@@ -814,7 +819,7 @@ knitr::include_graphics("pop_tern_prices.png")
 
 ```
 
-Linear model 
+Linear model
 
 ```{r prsh-CoDa-house-prices-lm}
 # Link median prices (sum_runits_oft_prices) with population (balances)
@@ -836,7 +841,8 @@ m1 <- lm(log10(median_kDKK_m2) ~ b1 + b2, data = bal_prices)
 
 ```
 
-Regression coefficients: 
+Regression coefficients:
+
 ```{r tbl-prsh-CoDa-house-prices-lm, results='asis'}
 
 summary(m1) %>% 
@@ -853,7 +859,7 @@ check_model(m1)
 
 ```
 
-Values vs. predictions: 
+Values vs. predictions:
 
 ```{r fig-prsh-CoDa-house-prices-lm, fig.cap="Predictions based on balances (b1 and b2) vs. median values (red line: x = y)", fig.height=3, fig.width=3}
 
@@ -873,17 +879,14 @@ ggplot() +
 
 ```
 
-# Acknowledgements 
+# Acknowledgements
 
 This work has been financed by Aalborg University - AAU (Project: [Global flows of migrants and their impact on north European welfare states - FLOW](https://www.flow.aau.dk/)). The sole responsibility of this publication lies with the authors. AAU is not responsible for any use that may be made of the information contained therein.
 
-# R session 
+# R session
 
 ```{r R-session, echo = FALSE}
 
 sessionInfo()
 
 ```
-
-
-
