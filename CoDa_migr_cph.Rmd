@@ -38,7 +38,7 @@ my_pkgs <- c("compositions",
              "furrr",
              "ggspatial", "gtsummary", 
              "kableExtra", "knitr",
-             "patchwork", "papeR", 
+             "patchwork", "papeR", "performance",  
              "rmarkdown", "remotes", 
              "sf", "spdep",
              "units",
@@ -844,6 +844,12 @@ summary(m1) %>%
   kbl(caption = "Regression coefficients (β) of the log-linear model",
       digits = 3) %>%
   kable_styling()
+
+```
+
+```{r check-model, fig.height=10}
+
+check_model(m1)
 
 ```
 
