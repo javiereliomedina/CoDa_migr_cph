@@ -529,16 +529,32 @@ cptl_prsh_ancestry_sf <- cptl_prsh_ancestry_sf %>%
 
 ```
 
-Higher values of b1 indicate less non-Western population:
+Higher values of b1 indicate less non-Western population while higher values of b2 indicate less western migrants:
 
-```{r fig-b1-non-wst, fig.height=3, fig.width=4.5, fig.cap = "Non-Western population vs. balance 1"}
+```{r fig-b1-non-wst, fig.height=6, fig.width=6, fig.cap = "Non-Western population vs. balance 1"}
 
-cptl_prsh_ancestry_sf %>%
+cptl_prsh_ancestry_sf %>% 
+  as_tibble() %>% 
+  select(pop_dan_pct, pop_frgn_wst_pct, pop_frgn_nwst_pct, b1, b2, -geometry) %>% 
+  pivot_longer(cols = -c(b1, b2),
+               names_to = "pop",
+               values_to = "percentage") %>%
+  pivot_longer(cols = -c(pop, percentage),
+               names_to = "balance",
+               values_to = "value") %>% 
+  mutate(pop = factor(pop,
+                      levels = c("pop_dan_pct",
+                                 "pop_frgn_wst_pct",
+                                 "pop_frgn_nwst_pct"),
+                      labels = c("Danes",
+                                 "Western",
+                                 "non-Western"))) %>%
   ggplot() +
-  geom_point(aes(x = b1,
-                 y = pop_frgn_nwst_pct)) + 
-  labs(y = "non-Western population [%]")
-  
+  geom_point(aes(x = value,
+                 y = percentage)) +
+  labs(y = "Percentage [%]") +
+  facet_grid(pop ~ balance, scales = "free")
+
 ```
 
 ### Spatial autocorrelation of balances
