@@ -41,11 +41,12 @@ my_pkgs <- c("compositions",
              "broom",
              "data.table", "danstat", "dint",
              "furrr",
-             "ggspatial", "gtsummary", 
+             "ggspatial", "gtsummary", "ggtern", 
              "kableExtra", "knitr",
              "patchwork", "papeR", "performance",  
              "rmarkdown", "remotes", 
              "sf", "spdep",
+             "tricolore",
              "units",
              "viridis",
              "tidyverse", "tidytable", "tm")
@@ -427,9 +428,61 @@ sum_runits_oft_prices %>%
 
 Ternary representation of population distribution. We made the ternary plots in a separate project (<https://javiereliomedina.github.io/ternary_maps_DK/> because there are some conflicts between *ggtern (3.3.0)* and *ggplot2 (3.3.5)*). Here we only load the results.
 
-```{r fig-tern-pop, fig.cap = "Population distribution in 2020", fig.height=5, fig.width=5}
+```{r fig-tern-pop, fig.cap = "Population distribution in 2020"}
 
-knitr::include_graphics("pop_tern.png")
+df <- filter(cptl_prsh_ancestry_sf, year == 2020)
+
+# Make colours
+tric <- tricolore::Tricolore(df,
+                             p1 = "pop_dan",
+                             p2 = "pop_frgn_wst",
+                             p3 = "pop_frgn_nwst",
+                             breaks = Inf,
+                             show_data = FALSE,
+                             center = NA,
+                             hue = 2/12,
+                             lightness = 1,
+                             chroma = 1
+                             )
+
+# legend
+p_legend <- tric$key +
+  geom_point(data = df,
+             aes(x = pop_dan, y = pop_frgn_wst, z = pop_frgn_nwst),
+             shape = 16,
+             size = 0.2) +
+  labs(L = "% Danes",
+       T = "% Wst",
+       R = "% Non-wst") +
+  theme(axis.title = element_text(size = 5, face = "bold"),
+        axis.text  = element_text(size = 5))
+
+# Add columns with colours
+df <- df %>%
+  mutate(pop_rgb = tric$rgb)
+
+# Map
+ggplot() +
+  geom_sf(data = dk_country_crop,
+          aes(geometry = geometry),
+          fill = "grey") +
+  geom_sf(data = df,
+          aes(fill = pop_rgb, geometry = geometry),
+          size = 0.05) +
+  scale_fill_identity() +
+  geom_sf(data = cptl_muni,
+          aes(geometry = geometry),
+          fill = NA,
+          color = "white",
+          size = 0.5) +
+  theme_void() +
+  annotation_custom(
+    ggtern::ggplotGrob(p_legend) ,
+    xmin = 730000,
+    xmax = 742000,
+    ymin = 6178000,
+    ymax = 6190000
+  )
 
 ```
 
@@ -829,9 +882,24 @@ as_tibble(sum_runits_oft_prices) %>%
 
 Ternary diagram with house prices (zoom the figure to the parishes with median values).
 
-```{r fig-tern-pop-prices, fig.cap = "Ternary diagram of population distribution vs. housing prices", fig.height=5, fig.width=5}
+```{r fig-tern-pop-prices, fig.cap = "Ternary diagram of population distribution vs. housing prices"}
 
-knitr::include_graphics("pop_tern_prices.png")
+ggtern::ggtern(data = sum_runits_oft_prices,
+               aes(x = pop_dan,
+                   y = pop_frgn_wst,
+                   z = pop_frgn_nwst,
+                   colour = cut_number(median_kDKK_m2,
+                                       n = 10,
+                                       dig.lab = 0))) +
+  viridis::scale_color_viridis(name = "Percentiles\n[kDkk/m2]",
+                               option = "turbo",
+                               discrete = TRUE) +
+  geom_point(size = 0.85) +
+  ggtern::theme_rgbw() +
+  ggtern::theme_hidetitles() +
+  ggtern::theme_zoom_L(0.6) +
+  guides(colour = guide_legend(reverse = TRUE,
+                               override.aes = list(size = 3)))
 
 ```
 
