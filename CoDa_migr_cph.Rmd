@@ -862,9 +862,12 @@ Cluster (k = 4) vs. house prices:
 
 ```{r cluster-prices}
 
-as_tibble(sum_runits_oft_prices) %>%
+sum_runits_oft_prices <- as_tibble(sum_runits_oft_prices) %>%
+  # Add balances and clusters 
   left_join(as_tibble(cptl_prsh_ancestry_sf)) %>% 
-  droplevels() %>% 
+  droplevels() 
+
+sum_runits_oft_prices %>% 
   select(CL4, mean_kDKK_m2, median_kDKK_m2, -geometry) %>% 
   tbl_summary(by = CL4,
               type = all_continuous() ~ "continuous2",
@@ -882,24 +885,36 @@ as_tibble(sum_runits_oft_prices) %>%
 
 Ternary diagram with house prices (zoom the figure to the parishes with median values).
 
-```{r fig-tern-pop-prices, fig.cap = "Ternary diagram of population distribution vs. housing prices"}
+```{r fig-tern-pop-prices, fig.cap = "Ternary diagram of population distribution vs. housing prices", fig.asp = 0.75, fig.width = 8, out.width = "100%"}
 
 ggtern::ggtern(data = sum_runits_oft_prices,
                aes(x = pop_dan,
                    y = pop_frgn_wst,
                    z = pop_frgn_nwst,
+                   shape = CL4,
                    colour = cut_number(median_kDKK_m2,
                                        n = 10,
                                        dig.lab = 0))) +
   viridis::scale_color_viridis(name = "Percentiles\n[kDkk/m2]",
                                option = "turbo",
                                discrete = TRUE) +
-  geom_point(size = 0.85) +
+  scale_shape_manual(name = "Cluster",
+                     values = c(16, 17, 15, 18)) +
+  geom_point(size = 2) +
   ggtern::theme_rgbw() +
   ggtern::theme_hidetitles() +
   ggtern::theme_zoom_L(0.6) +
   guides(colour = guide_legend(reverse = TRUE,
-                               override.aes = list(size = 3)))
+                               override.aes = list(size = 3))) +
+  ggalt::geom_encircle(data = sum_runits_oft_prices,
+                       aes(x = pop_dan,
+                           y = pop_frgn_wst,
+                           z = pop_frgn_nwst,
+                           shape = CL4),
+                       size = 1,
+                       alpha = 0.5,
+                       expand = 0.01,
+                       inherit.aes = FALSE)
 
 ```
 
