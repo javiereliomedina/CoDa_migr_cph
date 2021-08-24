@@ -923,20 +923,8 @@ Linear model
 ```{r prsh-CoDa-house-prices-lm}
 # Link median prices (sum_runits_oft_prices) with population (balances)
 
-bal_prices <- sum_runits_oft_prices %>% 
-  # Select variables of interest
-  select(prsh_id,
-         pop_dan,
-         pop_frgn_wst,
-         pop_frgn_nwst, 
-         pop_total_km2,
-         median_kDKK_m2) %>% 
-  # Add balances
-  mutate(b1 = sqrt(2/3) * log( ((pop_dan * pop_frgn_wst)^0.5) / (pop_frgn_nwst)),
-         b2 = sqrt(1/2) * log(pop_dan / pop_frgn_wst))
-
 # Model prices
-m1 <- lm(log10(median_kDKK_m2) ~ b1 + b2, data = bal_prices)
+m1 <- lm(log10(median_kDKK_m2) ~ b1 + b2, data = sum_runits_oft_prices)
 
 ```
 
@@ -962,10 +950,10 @@ Values vs. predictions:
 
 ```{r fig-prsh-CoDa-house-prices-lm, fig.cap="Predictions based on balances (b1 and b2) vs. median values (red line: x = y)", fig.height=3, fig.width=3}
 
-bal_prices$pred1 <- predict(m1)
+sum_runits_oft_prices$pred1 <- predict(m1)
 
 ggplot() +
-  geom_point(data = bal_prices,
+  geom_point(data = sum_runits_oft_prices,
              aes(x = 10^pred1,
                  y = median_kDKK_m2)) +
   scale_x_continuous(name = "Prediction [kDKK/m2]",
