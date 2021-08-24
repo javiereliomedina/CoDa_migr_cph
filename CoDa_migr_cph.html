@@ -2694,10 +2694,7 @@ Ternary diagram of population distribution vs. housing prices
 </p>
 </div>
 <p>Linear model</p>
-<pre class="r"><code># Link median prices (sum_runits_oft_prices) with population (balances)
-
-# Model prices
-m1 &lt;- lm(log10(median_kDKK_m2) ~ b1 + b2, data = sum_runits_oft_prices)</code></pre>
+<pre class="r"><code>m1 &lt;- lm(log10(median_kDKK_m2) ~ b1 + b2, data = sum_runits_oft_prices)</code></pre>
 <p>Regression coefficients:</p>
 <pre class="r"><code>summary(m1) %&gt;% 
   prettify() %&gt;% 

@@ -881,9 +881,7 @@ sum_runits_oft_prices %>%
 
 ```
 
-### Linear model
-
-Ternary diagram with house prices (zoom the figure to the parishes with median values).
+Ternary diagram with house prices and clusters (zoom the figure to the parishes with median values).
 
 ```{r fig-tern-pop-prices, fig.cap = "Ternary diagram of population distribution vs. housing prices", fig.asp = 0.75, fig.width = 8, out.width = "100%"}
 
@@ -918,12 +916,10 @@ ggtern::ggtern(data = sum_runits_oft_prices,
 
 ```
 
-Linear model
+### Linear model
 
 ```{r prsh-CoDa-house-prices-lm}
-# Link median prices (sum_runits_oft_prices) with population (balances)
 
-# Model prices
 m1 <- lm(log10(median_kDKK_m2) ~ b1 + b2, data = sum_runits_oft_prices)
 
 ```
