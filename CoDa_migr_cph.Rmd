@@ -760,7 +760,8 @@ cptl_prsh_ancestry_sf <- cptl_prsh_ancestry_sf %>%
 
 # Plot
 plot(hcl, hang = -1, cex = 0.4, xlab = "Parish ID")
-rect.hclust(hcl, k = 4, border = "red")
+rect.hclust(hcl, k = 2, border = "#0072B2")
+rect.hclust(hcl, k = 4, border = "#D55E00")
  
 ```
 
