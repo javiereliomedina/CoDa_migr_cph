@@ -1009,8 +1009,9 @@ ggplot() +
 
 Predicted heat outcome:
 
-```{r fig-pred-CoDa-lm, fig.cap="Ternary plot showing the predicted outcome for different compositions", fig.asp = 0.75, fig.width = 8, out.width = "100%"}
+```{r pred-CoDa-lm}
 
+## Heat map (ternary diagram)
 # Compute a grid of points in the simplex space
 dan <- wst <- seq(0.5, 99.5, length.out = 100)
 df <- expand_grid(dan = dan, wst = wst) %>%  
@@ -1035,7 +1036,44 @@ df <- df %>% bind_cols(df_bal)
 df <- df %>% 
   add_predictions(lm1) %>% 
   mutate(HP_pred = 10^pred)
-  
+
+## Transects for piloting predictions along with 95% confidence intervals at
+# e.g. Start in the mean composition (D = 80%, wst = 7.5%; nwst = 12.5%)
+
+# a) HP variation with nwst when log-ratio(dan/wst) = log(80/7.5) = c1 
+c1 <- log(80/7.5)
+tran1 <- tibble(name = "tran1",
+                nwst = seq(1, 99, 1),
+                wst = (100 - nwst)/(1 + exp(c1)), 
+                dan = 100 - nwst - wst)
+
+# b) HP variation with wst when log-ratio(dan/nwst) = log(80/12.5) = c2
+c2 <- log(80/12.5)
+tran2 <- tibble(name = "tran2",
+                wst = seq(1, 99, 1),
+                nwst = (100 - wst)/(1 + exp(c1)), 
+                dan = 100 - nwst - wst)
+
+# Combine in one tibble
+tran <- bind_rows(tran1, tran2)
+
+# ilr transformation
+tran <- tran %>% 
+  mutate(danwst_nwst = sqrt(2/3) * log( sqrt(dan * wst) / nwst),
+         dan_wst = sqrt(1/2) * log(dan / wst))
+
+# Predictions
+tran_pred <- predict(lm1, tran, se.fit = T, level = 0.95) %>% 
+  as_tibble()
+
+# Add predictions to the table
+tran <- bind_cols(tran, tran_pred)
+
+```
+
+
+```{r fig-pred-CoDa-lm, fig.cap="Ternary plot showing the predicted outcome for different compositions", fig.asp = 0.75, fig.width = 8, out.width = "100%"}
+
 # Ternary plot showing the predicted outcome for different compositions
 ggtern(df,aes(dan, wst, nwst)) + 
   geom_hex_tern(binwidth  = 0.005, 
@@ -1056,59 +1094,25 @@ ggtern(df,aes(dan, wst, nwst)) +
                        size = 1,
                        alpha = 0.5,
                        expand = 0.01,
-                       inherit.aes = FALSE) 
+                       inherit.aes = FALSE) -> p
+
+# Add transects
+p + geom_line(data = tran,aes(x = dan,
+                              y = wst,
+                              z = nwst,
+                              colour = name),
+              size = 1) +
+  scale_colour_manual(name = "Transects",
+                      values = c("#0072B2", "#D55E00"))
 
 ```
 
-Bivariate plots:
+Predictions with CI: 
 
-```{r}
-## Transects 
-# Start in the mean composition (D = 80%, wst = 7.5%; nwst = 12.5%)
+```{r fig-transects-pred-CI}
 
-# HP variation with nwst when log-ratio(dan/wst) = c1
-c1 <- log(80/7.5)
-seg1 <- tibble(name = "seg1",
-               nwst = seq(1, 99, 1),
-               wst = (100 - nwst)/(1 + exp(c1)), 
-               dan = 100 - nwst - wst)
-
-# HP variation with wst when log-ratio(dan/nwst) = c2
-c2 <- log(80/12.5)
-seg2 <- tibble(name = "seg2",
-               wst = seq(1, 99, 1),
-               nwst = (100 - wst)/(1 + exp(c1)), 
-               dan = 100 - nwst - wst)
-
-# Combine 
-seg <- bind_rows(seg1, seg2)
-
-# ilr transformation
-seg <- seg %>% 
-  mutate(danwst_nwst = sqrt(2/3) * log( sqrt(dan * wst) / nwst),
-         dan_wst = sqrt(1/2) * log(dan / wst))
-
-# Predictions
-seg_pred <- predict(lm1, seg, se.fit = T, level = 0.95) %>% 
-  as_tibble()
-
-# Add predictions to the table
-seg <- bind_cols(seg, seg_pred)
-
-# Plot
-ggtern::ggtern(data = seg,
-                     aes(x = dan,
-                         y = wst,
-                         z = nwst,
-                         col = name)) +
-  geom_line()
-```
-
-
-```{r fig-}
-
-p1 <- seg %>% 
-  filter(name == "seg1") %>% 
+p1 <- tran %>% 
+  filter(name == "tran1") %>% 
   ggplot(aes(x = nwst, y = fit)) + 
   geom_ribbon(aes(ymin = fit - 1.96*se.fit,
                   ymax = fit + 1.96*se.fit),
@@ -1116,11 +1120,13 @@ p1 <- seg %>%
               fill = "red") +
   geom_line() +
   scale_y_continuous(limits = c(0, 3.5)) +
-  labs(title = "A) Constant log-ratio Danes vs. Western")
+  labs(title = "A) Transect 1: log(Danes/Western) = 2.367",
+       x = "nwst [%]",
+       y = "log10(HP)")
 
 
-p2 <- seg %>% 
-  filter(name == "seg2") %>% 
+p2 <- tran %>% 
+  filter(name == "tran2") %>% 
   ggplot(aes(x = wst, y = fit)) + 
   geom_ribbon(aes(ymin = fit - 1.96*se.fit,
                   ymax = fit + 1.96*se.fit),
@@ -1128,7 +1134,9 @@ p2 <- seg %>%
               fill = "red") +
   geom_line() +
   scale_y_continuous(limits = c(0, 3.5)) +
-  labs(title = "B) Constant log-ratio Danes vs. non-Western")
+  labs(title = "B) Transect 2: log(Danes/non-Western) = 1.856",
+       x = "wst [%]",
+       y = "log10(HP)")
 
 p1 + p2
 
