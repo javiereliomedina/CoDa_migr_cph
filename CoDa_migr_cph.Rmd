@@ -946,17 +946,17 @@ dat_acomp_prices <- sum_runits_oft_prices %>%
 # First balance ratio nwst/dan+wst
 bal1   <- balance(dat_acomp_prices , ~dan/wst/nwst) %>% as_tibble() %>% janitor::clean_names()
 dat_m1 <- sum_runits_oft_prices  %>% bind_cols(bal1)
-lm1    <- lm(log10(median_kDKK_m2) ~ danwst_nwst  + dan_wst, data = dat_m1)
+lm1    <- lm(log(median_kDKK_m2) ~ danwst_nwst  + dan_wst, data = dat_m1)
 
 # First balance ratio wst/dan+nwst
 bal2   <- balance(dat_acomp_prices , ~dan/nwst/wst) %>% as_tibble() %>% janitor::clean_names()
 dat_m2 <- sum_runits_oft_prices  %>% bind_cols(bal2)
-lm2    <- lm(log10(median_kDKK_m2) ~ dannwst_wst  + dan_nwst, data = dat_m2)
+lm2    <- lm(log(median_kDKK_m2) ~ dannwst_wst  + dan_nwst, data = dat_m2)
 
 # First balance ratio dan/wst+nwst
 bal3   <- balance(dat_acomp_prices , ~nwst/wst/dan) %>% as_tibble() %>% janitor::clean_names()
 dat_m3 <- sum_runits_oft_prices  %>% bind_cols(bal3)
-lm3    <- lm(log10(median_kDKK_m2) ~ nwstwst_dan  + nwst_wst, data = dat_m3)
+lm3    <- lm(log(median_kDKK_m2) ~ nwstwst_dan  + nwst_wst, data = dat_m3)
 
 ```
 
@@ -995,12 +995,10 @@ sum_runits_oft_prices$pred1 <- predict(lm1)
 
 ggplot() +
   geom_point(data = sum_runits_oft_prices,
-             aes(x = 10^pred1,
-                 y = median_kDKK_m2)) +
-  scale_x_continuous(name = "Prediction [kDKK/m2]",
-                     trans = "log10") +
-  scale_y_continuous(name = "Median values [kDKK/m2]", 
-                     trans = "log10") +
+             aes(x = pred1,
+                 y = log(median_kDKK_m2))) +
+  scale_x_continuous(name = "Prediction") +
+  scale_y_continuous(name = "log(HP)") +
   geom_abline(intercept = 0,
               slope = 1,
               colour = "red")
@@ -1033,9 +1031,18 @@ df_bal <- df %>%
 df <- df %>% bind_cols(df_bal)
 
 # Predict the outcome (with model 1)
+df_pred <- predict(lm1, newdata = df, se.fit = TRUE)
+df <- bind_cols(df, df_pred)
+
+# Back-transform prediction to the original scale
 df <- df %>% 
-  add_predictions(lm1) %>% 
-  mutate(HP_pred = 10^pred)
+     mutate(fit_LCI = fit - 1.96 * sqrt(0.5 * se.fit^2),
+            fit_UCI = fit + 1.96 * sqrt(0.5 * se.fit^2),
+            # back-transform
+            HP_pred = exp(fit + 0.5*se.fit^2),
+            HP_LCI  = exp(fit_LCI + 0.5*se.fit^2),
+            HP_UCI  = exp(fit_UCI + 0.5*se.fit^2)
+     )
 
 ## Transects for piloting predictions along with 95% confidence intervals at
 # e.g. Start in the mean composition (D = 80%, wst = 7.5%; nwst = 12.5%)
@@ -1064,11 +1071,18 @@ tran <- tran %>%
 
 # Predictions
 tran_pred <- predict(lm1, tran, se.fit = T, level = 0.95) %>% 
-  as_tibble()
+  as_tibble() %>% 
+  # back-transform to original scale
+  mutate(fit_LCI = fit - 1.96 * sqrt(0.5 * se.fit^2),
+         fit_UCI = fit + 1.96 * sqrt(0.5 * se.fit^2),
+         # back-transform
+         HP_pred = exp(fit + 0.5*se.fit^2),
+         HP_LCI  = exp(fit_LCI + 0.5*se.fit^2),
+         HP_UCI  = exp(fit_UCI + 0.5*se.fit^2))
 
 # Add predictions to the table
-tran <- bind_cols(tran, tran_pred)
-
+tran <- bind_cols(tran, tran_pred) 
+       
 ```
 
 
@@ -1113,30 +1127,31 @@ Predictions with CI:
 
 p1 <- tran %>% 
   filter(name == "tran1") %>% 
-  ggplot(aes(x = nwst, y = fit)) + 
-  geom_ribbon(aes(ymin = fit - 1.96*se.fit,
-                  ymax = fit + 1.96*se.fit),
+  ggplot(aes(x = nwst, y = HP_pred)) + 
+  geom_ribbon(aes(ymin = HP_LCI,
+                  ymax = HP_UCI),
               alpha = 0.5,
               fill = "red") +
   geom_line() +
-  scale_y_continuous(limits = c(0, 3.5)) +
+  scale_y_log10(limits = c(1, 3000)) +
   labs(title = "A) Transect 1: log(Danes/Western) = 2.367",
        x = "nwst [%]",
-       y = "log10(HP)")
-
+       y = "HP [kDKK/m2]") +
+  annotation_logticks(sides = "l")
 
 p2 <- tran %>% 
   filter(name == "tran2") %>% 
-  ggplot(aes(x = wst, y = fit)) + 
-  geom_ribbon(aes(ymin = fit - 1.96*se.fit,
-                  ymax = fit + 1.96*se.fit),
+  ggplot(aes(x = wst, y = HP_pred)) + 
+  geom_ribbon(aes(ymin = HP_LCI,
+                  ymax = HP_UCI),
               alpha = 0.5,
               fill = "red") +
   geom_line() +
-  scale_y_continuous(limits = c(0, 3.5)) +
+  scale_y_log10(limits = c(1, 3000)) +
   labs(title = "B) Transect 2: log(Danes/non-Western) = 1.856",
        x = "wst [%]",
-       y = "log10(HP)")
+       y = "log(HP)") + 
+  annotation_logticks(sides = "l")
 
 p1 + p2
 
