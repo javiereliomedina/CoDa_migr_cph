@@ -903,7 +903,7 @@ ggtern::ggtern(data = sum_runits_oft_prices,
                    colour = cut_number(median_kDKK_m2,
                                        n = 10,
                                        dig.lab = 0))) +
-  scale_colour_manual(name = "Pred HP\n[kDkk/m2]",
+  scale_colour_manual(name = "Percentiles\n[kDkk/m2]",
                          values = rainbow(10)) +
   scale_shape_manual(name = "Cluster",
                      values = c(16, 17, 15, 18)) +
@@ -1058,7 +1058,7 @@ tran1 <- tibble(name = "tran1",
 c2 <- log(80/12.5)
 tran2 <- tibble(name = "tran2",
                 wst = seq(1, 99, 1),
-                nwst = (100 - wst)/(1 + exp(c1)), 
+                nwst = (100 - wst)/(1 + exp(c2)), 
                 dan = 100 - nwst - wst)
 
 # Combine in one tibble
@@ -1089,12 +1089,12 @@ tran <- bind_cols(tran, tran_pred)
 ```{r fig-pred-CoDa-lm, fig.cap="Ternary plot showing the predicted outcome for different compositions", fig.asp = 0.75, fig.width = 8, out.width = "100%"}
 
 # Ternary plot showing the predicted outcome for different compositions
-ggtern(df,aes(dan, wst, nwst)) + 
+p <- ggtern(df,aes(dan, wst, nwst)) + 
   geom_hex_tern(binwidth  = 0.005, 
                 aes(value = HP_pred),
                 fun = mean,
                 alpha = 0.75) +
-  scale_fill_gradientn(name = "Pred HP\n[kDkk/m2]",
+  scale_fill_gradientn(name = "Predicted HP\n[kDkk/m2]",
                        colours = rainbow(10), 
                        trans = "log10") +
   ggtern::theme_rgbw() +
@@ -1108,14 +1108,18 @@ ggtern(df,aes(dan, wst, nwst)) +
                        size = 1,
                        alpha = 0.5,
                        expand = 0.01,
-                       inherit.aes = FALSE) -> p
+                       inherit.aes = FALSE) 
 
 # Add transects
-p + geom_line(data = tran,aes(x = dan,
-                              y = wst,
-                              z = nwst,
-                              colour = name),
+p + geom_line(data = tran,
+              aes(x = dan,
+                  y = wst,
+                  z = nwst,
+                  colour = name,
+                  linetype = name),
               size = 1) +
+  scale_linetype_manual(name = "Transects",
+                        values = c("dashed", "solid")) +
   scale_colour_manual(name = "Transects",
                       values = c("#0072B2", "#D55E00"))
 
@@ -1123,7 +1127,7 @@ p + geom_line(data = tran,aes(x = dan,
 
 Predictions with CI: 
 
-```{r fig-transects-pred-CI}
+```{r fig-transects-pred-CI, fig.cap="Predicted median house prices at parish level with 95% CI for transects 1 and 2", fig.asp = 0.70, fig.width = 7, out.width = "100%"}
 
 p1 <- tran %>% 
   filter(name == "tran1") %>% 
@@ -1133,7 +1137,7 @@ p1 <- tran %>%
               alpha = 0.5,
               fill = "red") +
   geom_line() +
-  scale_y_log10(limits = c(1, 3000)) +
+  scale_y_log10(limits = c(1, 2000)) +
   labs(title = "A) Transect 1: log(Danes/Western) = 2.367",
        x = "nwst [%]",
        y = "HP [kDKK/m2]") +
@@ -1147,10 +1151,10 @@ p2 <- tran %>%
               alpha = 0.5,
               fill = "red") +
   geom_line() +
-  scale_y_log10(limits = c(1, 3000)) +
+  scale_y_log10(limits = c(1, 2000)) +
   labs(title = "B) Transect 2: log(Danes/non-Western) = 1.856",
        x = "wst [%]",
-       y = "log(HP)") + 
+       y = "HP [kDKK/m2]") + 
   annotation_logticks(sides = "l")
 
 p1 + p2
