@@ -1127,7 +1127,7 @@ p + geom_line(data = tran,
 
 Predictions with CI: 
 
-```{r fig-transects-pred-CI, fig.cap="Predicted median house prices at parish level with 95% CI for transects 1 and 2", fig.asp = 0.70, fig.width = 7, out.width = "100%"}
+```{r fig-transects-pred-CI, fig.cap="Predicted median house prices at parish level with 95% CI for transects 1 and 2", fig.height=4, fig.width = 7, out.width = "100%"}
 
 p1 <- tran %>% 
   filter(name == "tran1") %>% 
@@ -1138,7 +1138,7 @@ p1 <- tran %>%
               fill = "red") +
   geom_line() +
   scale_y_log10(limits = c(1, 2000)) +
-  labs(title = "A) Transect 1: log(Danes/Western) = 2.367",
+  labs(title = "Transect 1: log(Danes/Western) = 2.367",
        x = "nwst [%]",
        y = "HP [kDKK/m2]") +
   annotation_logticks(sides = "l")
@@ -1152,7 +1152,7 @@ p2 <- tran %>%
               fill = "red") +
   geom_line() +
   scale_y_log10(limits = c(1, 2000)) +
-  labs(title = "B) Transect 2: log(Danes/non-Western) = 1.856",
+  labs(title = "Transect 2: log(Danes/non-Western) = 1.856",
        x = "wst [%]",
        y = "HP [kDKK/m2]") + 
   annotation_logticks(sides = "l")
