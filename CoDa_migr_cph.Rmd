@@ -431,7 +431,7 @@ sum_runits_oft_prices %>%
 
 ## Compositional data analysis
 
-Ternary representation of population distribution. We made the ternary plots in a separate project (<https://javiereliomedina.github.io/ternary_maps_DK/> because there are some conflicts between *ggtern (3.3.0)* and *ggplot2 (3.3.5)*). Here we only load the results.
+Ternary representation of population distribution. 
 
 ```{r fig-tern-pop, fig.cap = "Population distribution in 2020"}
 
@@ -816,6 +816,29 @@ pCL4
 
 ```
 
+Compositional means of the clusters:
+
+```{r comp-mean}
+
+CL4_comp_means <- cptl_prsh_ancestry_sf %>% 
+  as_tibble() %>% 
+  select(CL4, pop_dan_pct,  pop_frgn_wst_pct,   pop_frgn_nwst_pct,  -geometry) %>%
+  group_split(CL4, .keep = FALSE) %>%
+  map(., ~alr(.)) %>%
+  map(., ~mean(.)) %>% 
+  map_dfr(., ~alrInv(.)) %>% 
+  mutate(CL4 = factor(c(1, 2, 3, 4))) %>% 
+  select(CL4, everything()) %>% 
+  mutate(across(where(is.numeric), ~ .x * 100))
+
+CL4_comp_means %>% 
+  kbl(caption = "Compositional means of the clusters",
+      col.names = c("Cluster", "Danes", "Western", "Non-Western"), 
+      digits = 1) %>%
+  kable_styling()
+
+```
+
 Population statistics (in percentage) by clusters (k = 4):
 
 ```{r prsh-CoDa-cluster-k-tbl}
@@ -1121,7 +1144,7 @@ p + geom_line(data = tran,
   scale_linetype_manual(name = "Transects",
                         values = c("dashed", "solid")) +
   scale_colour_manual(name = "Transects",
-                      values = c("#0072B2", "#D55E00"))
+                      values = c("#0072B2", "#D55E00")) 
 
 ```
 
