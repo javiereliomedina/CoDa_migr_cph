@@ -1,6 +1,8 @@
 ---
-title: "Migration studies with a Compositional Data approach: a case study of population structure in the Capital Region of Denmark"
-output: html_document
+title: 'Migration studies with a Compositional Data approach: a case study of population
+  structure in the Capital Region of Denmark'
+output:
+  html_document: default
 fontsize: 12pt
 urlcolor: blue
 ---
@@ -80,7 +82,7 @@ theme_set(theme_bw() +
 
 ## Administrative units
 
-Parishes of the Capital region downloaded from [kortforsyningen](https://kortforsyningen.dk/). We have created our own package for dowloading the data a local repository directly from R (i.e. [dangeo](https://github.com/javiereliomedina/dangeo.git)). The package can be downloaded from GitHub:
+Parishes of the Capital region downloaded from [kortforsyningen](https://kortforsyningen.dk/). We have created our own package for downloading the data a local repository directly from R (i.e. [dangeo](https://github.com/javiereliomedina/dangeo.git)). The package can be downloaded from GitHub:
 
 ```{r install-github-packages}
 
