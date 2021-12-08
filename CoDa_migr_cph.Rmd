@@ -289,15 +289,12 @@ cptl_prsh_ancestry <- cptl_prsh_ancestry_read %>%
     ancestry = factor(ancestry)) %>% 
   # Pivot (one row for peach parish and year)
   pivot_wider(names_from = ancestry, values_from = value) %>% 
-  # Merge immigrants and their descendants (i.e. foreigners) 
-  mutate(pop_frgn_wst = pop_mi_wst + pop_de_wst, 
-         pop_frgn_nwst = pop_mi_nwst + pop_de_nwst) %>% 
-  select(-c(pop_mi_wst, pop_de_wst, pop_mi_nwst, pop_de_nwst)) %>% 
+  # Merge immigrants and their descendants (i.e. foreigners)
+  mutate(pop_frgn_wst = pop_mi_wst + pop_de_wst,
+         pop_frgn_nwst = pop_mi_nwst + pop_de_nwst) %>%
   # Add column with total population
-  mutate(pop_total = select(., starts_with("pop_")) %>% rowSums()) %>% 
-  # Put NA when pop_* is 0
-  mutate(across(starts_with("pop"), ~ifelse(.x == 0, NA, .x)))
-
+  mutate(pop_total = pop_dan + pop_frgn_wst + pop_frgn_nwst)  
+  
 # Add the spatial information:
 cptl_prsh_ancestry_sf <- cptl_prsh %>%
   select(prsh_id, prsh_area_km2) %>% 
