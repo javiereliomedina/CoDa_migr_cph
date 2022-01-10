@@ -12,6 +12,6 @@ This work is licensed under a
 
 # Migration studies with a Compositional Data approach: a case study of population structure in the Capital Region of Denmark
 
-R scripts for the article "Migration studies with a Compositional Data approach: a case study of population structure in the Capital Region of Denmark".
+- The R-scripts for the article are on a [GitHub Page](https://javiereliomedina.github.io/CoDa_migr_cph/).
 
-- Preprint version submitted to [arXiv](https://arxiv.org/).  
+- A preprint version of the article has been submitted to [arXiv](https://arxiv.org/abs/2201.02451).  
