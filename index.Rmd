@@ -352,7 +352,7 @@ cptl_prsh_ancestry_sf %>%
 
 ```
 
-```{r fig-pop-parish, fig.height=10, fig.width=5, fig.cap = "Population distribution"}
+```{r fig-pop-parish, fig.cap = "Population distribution"}
 
 cptl_prsh_ancestry_sf %>%
   select(pop_dan_pct, pop_frgn_nwst_pct, pop_frgn_wst_pct) %>%
@@ -372,7 +372,7 @@ cptl_prsh_ancestry_sf %>%
                      direction = -1, 
                      limits = c(0, 100)) +
   theme_void() +
-  facet_wrap(~names, ncol = 1)
+  facet_wrap(~names, ncol = 3)
 
 ```
 
