@@ -15,3 +15,5 @@ This work is licensed under a
 - The R-scripts for the article are on a [GitHub Page](https://javiereliomedina.github.io/CoDa_migr_cph/).
 
 - A preprint version of the article has been submitted to [arXiv](https://arxiv.org/abs/2201.02451).  
+
+- Link to published article: [Link](https://doi.org/10.1007/978-3-031-10545-6_39)
