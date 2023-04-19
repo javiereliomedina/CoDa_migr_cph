@@ -16,4 +16,6 @@ This work is licensed under a
 
 - A preprint version of the article has been submitted to [arXiv](https://arxiv.org/abs/2201.02451).  
 
-- Link to published article: [Link](https://doi.org/10.1007/978-3-031-10545-6_39)
+- Published article: [Link](https://doi.org/10.1007/978-3-031-10545-6_39)
+
+Citation: Elío, J., Georgati, M., Hansen, H.S., Keßler, C. (2022). Migration Studies with a Compositional Data Approach: A Case Study of Population Structure in the Capital Region of Denmark. In: Gervasi, O., Murgante, B., Misra, S., Rocha, A.M.A.C., Garau, C. (eds) Computational Science and Its Applications – ICCSA 2022 Workshops. ICCSA 2022. Lecture Notes in Computer Science, vol 13379. Springer, Cham. (https://doi.org/10.1007/978-3-031-10545-6_39)
